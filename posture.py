@@ -1,98 +1,75 @@
 import cv2
 import mediapipe as mp
-import math
+import time
 
-# Initialize MediaPipe Pose
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose()
-mp_draw = mp.solutions.drawing_utils
 
-# Start webcam
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+def detect_posture():
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose()
 
-    # Convert to RGB
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = pose.process(rgb)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    h, w, _ = frame.shape
+    start_time = time.time()
+    posture_counts = {}
 
-    posture_text = "Good Posture"
-    color = (0, 255, 0)
+    while time.time() - start_time < 5:   # Run detection for 5 seconds
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    if results.pose_landmarks:
-        landmarks = results.pose_landmarks.landmark
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = pose.process(rgb)
 
-        # -------- Get Important Landmarks --------
-        left_shoulder = landmarks[11]
-        right_shoulder = landmarks[12]
-        left_ear = landmarks[7]
-        right_ear = landmarks[8]
+        h, w, _ = frame.shape
+        posture_text = "Good Posture"
 
-        # Convert normalized coords to pixel coords
-        ls_x, ls_y = int(left_shoulder.x * w), int(left_shoulder.y * h)
-        rs_x, rs_y = int(right_shoulder.x * w), int(right_shoulder.y * h)
-        le_x, le_y = int(left_ear.x * w), int(left_ear.y * h)
-        re_x, re_y = int(right_ear.x * w), int(right_ear.y * h)
+        if results.pose_landmarks:
+            landmarks = results.pose_landmarks.landmark
 
-        # Averages
-        ear_avg_y = (le_y + re_y) // 2
-        shoulder_avg_y = (ls_y + rs_y) // 2
-        ear_mid_x = (le_x + re_x) // 2
-        shoulder_mid_x = (ls_x + rs_x) // 2
+            left_shoulder = landmarks[11]
+            right_shoulder = landmarks[12]
+            left_ear = landmarks[7]
+            right_ear = landmarks[8]
 
-        # Differences
-        ear_shoulder_vertical = abs(ear_avg_y - shoulder_avg_y)
-        shoulder_diff = abs(ls_y - rs_y)
+            ls_y = int(left_shoulder.y * h)
+            rs_y = int(right_shoulder.y * h)
+            le_y = int(left_ear.y * h)
+            re_y = int(right_ear.y * h)
 
-        # -----------------------------
-        # POSTURE DETECTION LOGIC
-        # -----------------------------
+            ear_avg_y = (le_y + re_y) // 2
+            shoulder_avg_y = (ls_y + rs_y) // 2
 
-        # 1️⃣ Hunched Shoulders (shoulders too close to ears)
-        if ear_shoulder_vertical < h * 0.15:
-            posture_text = "Hunched Shoulders"
-            color = (0, 0, 255)
+            ear_mid_x = int((left_ear.x + right_ear.x) * w / 2)
+            shoulder_mid_x = int((left_shoulder.x + right_shoulder.x) * w / 2)
 
-        # 2️⃣ Uneven Shoulders
-        elif shoulder_diff > h * 0.04:
-            posture_text = "Uneven Shoulders"
-            color = (0, 0, 255)
+            ear_shoulder_vertical = abs(ear_avg_y - shoulder_avg_y)
+            shoulder_diff = abs(ls_y - rs_y)
 
-        # 3️⃣ Forward Head
-        elif abs(ear_mid_x - shoulder_mid_x) > w * 0.05:
-            posture_text = "Forward Head"
-            color = (0, 0, 255)
+            # ---- POSTURE LOGIC ----
+            if ear_shoulder_vertical < h * 0.15:
+                posture_text = "Hunched Shoulders"
 
-        # 4️⃣ Leaning Too Close (Depth using Z axis)
-        elif left_shoulder.z < -0.35 and right_shoulder.z < -0.35:
-            posture_text = "Leaning Too Close"
-            color = (0, 0, 255)
+            elif shoulder_diff > h * 0.04:
+                posture_text = "Uneven Shoulders"
 
-        else:
-            posture_text = "Good Posture"
-            color = (0, 255, 0)
+            elif abs(ear_mid_x - shoulder_mid_x) > w * 0.05:
+                posture_text = "Forward Head"
 
-        # Draw pose landmarks
-        mp_draw.draw_landmarks(
-            frame,
-            results.pose_landmarks,
-            mp_pose.POSE_CONNECTIONS
-        )
+            elif left_shoulder.z < -0.35 and right_shoulder.z < -0.35:
+                posture_text = "Leaning Too Close"
 
-    # Display posture text
-    cv2.putText(frame, posture_text, (30, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1, color, 3)
+            else:
+                posture_text = "Good Posture"
 
-    cv2.imshow("Posture Correction System", frame)
+        # Count occurrences
+        posture_counts[posture_text] = posture_counts.get(posture_text, 0) + 1
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    cap.release()
+    cv2.destroyAllWindows()
 
-cap.release()
-cv2.destroyAllWindows()
+    # Return most frequent posture detected
+    if posture_counts:
+        return max(posture_counts, key=posture_counts.get)
+    else:
+        return "Good Posture"
