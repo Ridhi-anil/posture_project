@@ -9,3 +9,14 @@ def get_exercise(posture_type):
     }
 
     return exercises.get(posture_type, "Maintain good posture.")
+
+
+def get_exercise_media(posture_issue):
+    mapping = {
+        "Hunched Shoulders": "assets/shoulder_roll.gif",
+        "Uneven Shoulders": "assets/side_stretch.gif",
+        "Forward Head": "assets/Chin_tucks.gif",
+        "Leaning Too Close": "assets/neck_stretch.gif"
+    }
+
+    return mapping.get(posture_issue, None)

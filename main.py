@@ -2,7 +2,9 @@ import customtkinter as ctk
 import threading
 import time
 from posture import detect_posture
-from exercises import get_exercise
+from exercises import get_exercise, get_exercise_media
+
+from PIL import Image, ImageTk, ImageSequence
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -22,7 +24,7 @@ def show_alert(posture, exercise):
     paused = True  # Pause timer
 
     alert = ctk.CTkToplevel(app)
-    alert.geometry("480x320")
+    alert.geometry("520x520")
     alert.title("Posture Alert")
     alert.grab_set()
 
@@ -46,12 +48,34 @@ def show_alert(posture, exercise):
 
     exercise_label = ctk.CTkLabel(
         card,
-        text=f"Recommended Exercise:\n\n{exercise}",
+        text=f"Recommended Exercise:\n{exercise}",
         font=("Arial", 15),
-        wraplength=400,
+        wraplength=420,
         text_color="gray"
     )
-    exercise_label.pack(pady=15)
+    exercise_label.pack(pady=10)
+
+    # ----------- LOAD & PLAY GIF -----------
+    gif_path = get_exercise_media(posture)
+
+    gif_label = ctk.CTkLabel(card, text="")
+    gif_label.pack(pady=10)
+
+    if gif_path:
+        gif = Image.open(gif_path)
+        frames = [
+            ImageTk.PhotoImage(frame.copy().resize((280, 280)))
+            for frame in ImageSequence.Iterator(gif)
+        ]
+
+        def animate(index=0):
+            if paused:  # Keep animating while paused
+                gif_label.configure(image=frames[index])
+                alert.after(100, animate, (index + 1) % len(frames))
+
+        animate()
+
+    # ----------- CLOSE BUTTON -----------
 
     def close_alert():
         global paused
@@ -62,12 +86,12 @@ def show_alert(posture, exercise):
         card,
         text="I Will Fix It 💪",
         height=45,
-        width=200,
+        width=220,
         corner_radius=25,
         font=("Arial", 15, "bold"),
         command=close_alert
     )
-    ok_button.pack(pady=20)
+    ok_button.pack(pady=15)
 
 
 # ---------------- DETECTION ---------------- #
@@ -131,11 +155,9 @@ app.geometry("650x450")
 app.title("AI Posture Guardian")
 app.resizable(False, False)
 
-# Main Card
 main_frame = ctk.CTkFrame(app, corner_radius=0)
 main_frame.pack(fill="both", expand=True)
 
-# Title
 title = ctk.CTkLabel(
     main_frame,
     text="AI POSTURE GUARDIAN",
@@ -151,7 +173,6 @@ subtitle = ctk.CTkLabel(
 )
 subtitle.pack(pady=(0, 30))
 
-# Status Card
 status_card = ctk.CTkFrame(main_frame, corner_radius=20)
 status_card.pack(padx=40, fill="x")
 
@@ -163,7 +184,6 @@ status_label = ctk.CTkLabel(
 )
 status_label.pack(pady=15)
 
-# Timer Card
 timer_card = ctk.CTkFrame(main_frame, corner_radius=20)
 timer_card.pack(padx=40, pady=25, fill="x")
 
@@ -183,7 +203,6 @@ timer_sub = ctk.CTkLabel(
 )
 timer_sub.pack(pady=(0, 10))
 
-# Buttons
 button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
 button_frame.pack(pady=20)
 
