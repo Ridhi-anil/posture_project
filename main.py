@@ -7,109 +7,208 @@ from exercises import get_exercise
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-CHECK_INTERVAL = 10   # Change to 10 for testing
+CHECK_INTERVAL = 10   # Change to 1800 for 30 mins
 
 running = False
+paused = False
 time_left = CHECK_INTERVAL
+
 
 # ---------------- ALERT WINDOW ---------------- #
 
-
 def show_alert(posture, exercise):
-    alert = ctk.CTkToplevel()
-    alert.geometry("400x300")
-    alert.title("Posture Alert")
+    global paused
 
-    alert_label = ctk.CTkLabel(
-        alert,
-        text=f"Detected: {posture}",
-        font=("Arial", 20, "bold"),
+    paused = True  # Pause timer
+
+    alert = ctk.CTkToplevel(app)
+    alert.geometry("480x320")
+    alert.title("Posture Alert")
+    alert.grab_set()
+
+    card = ctk.CTkFrame(alert, corner_radius=20)
+    card.pack(fill="both", expand=True, padx=20, pady=20)
+
+    alert_title = ctk.CTkLabel(
+        card,
+        text="⚠ POSTURE ALERT",
+        font=("Arial", 24, "bold"),
         text_color="red"
     )
-    alert_label.pack(pady=20)
+    alert_title.pack(pady=(20, 10))
+
+    posture_label = ctk.CTkLabel(
+        card,
+        text=f"Issue Detected: {posture}",
+        font=("Arial", 18)
+    )
+    posture_label.pack(pady=5)
 
     exercise_label = ctk.CTkLabel(
-        alert,
-        text=f"Suggested Exercise:\n\n{exercise}",
-        font=("Arial", 16),
-        wraplength=350
+        card,
+        text=f"Recommended Exercise:\n\n{exercise}",
+        font=("Arial", 15),
+        wraplength=400,
+        text_color="gray"
     )
-    exercise_label.pack(pady=10)
+    exercise_label.pack(pady=15)
 
-    close_button = ctk.CTkButton(alert, text="OK", command=alert.destroy)
-    close_button.pack(pady=20)
+    def close_alert():
+        global paused
+        paused = False
+        alert.destroy()
+
+    ok_button = ctk.CTkButton(
+        card,
+        text="I Will Fix It 💪",
+        height=45,
+        width=200,
+        corner_radius=25,
+        font=("Arial", 15, "bold"),
+        command=close_alert
+    )
+    ok_button.pack(pady=20)
 
 
 # ---------------- DETECTION ---------------- #
 
 def run_detection():
     posture = detect_posture()
-    exercise = get_exercise(posture)
-    show_alert(posture, exercise)
+
+    if posture != "Good Posture":
+        exercise = get_exercise(posture)
+        show_alert(posture, exercise)
+    else:
+        status_label.configure(text="Perfect Posture ✅", text_color="#00FFAA")
 
 
 # ---------------- TIMER ---------------- #
 
 def countdown():
-    global time_left
+    global time_left, running, paused
 
     while running:
-        mins, secs = divmod(time_left, 60)
-        timer_label.configure(text=f"Next Check In: {mins:02d}:{secs:02d}")
-        time.sleep(1)
-        time_left -= 1
+        if not paused:
+            mins, secs = divmod(time_left, 60)
+            timer_label.configure(text=f"{mins:02d}:{secs:02d}")
 
-        if time_left <= 0:
-            run_detection()
-            time_left = CHECK_INTERVAL
+            time.sleep(1)
+            time_left -= 1
+
+            if time_left <= 0:
+                status_label.configure(
+                    text="Checking posture...", text_color="orange")
+                run_detection()
+                time_left = CHECK_INTERVAL
+        else:
+            time.sleep(1)
 
 
 def start_monitoring():
-    global running
-    global time_left
+    global running, time_left
 
     if not running:
         running = True
         time_left = CHECK_INTERVAL
         threading.Thread(target=countdown, daemon=True).start()
-        status_label.configure(text="Monitoring Active", text_color="green")
+
+        status_label.configure(text="Monitoring Active", text_color="#00FFAA")
+
+
+def stop_monitoring():
+    global running, time_left
+
+    running = False
+    time_left = CHECK_INTERVAL
+    timer_label.configure(text="00:00")
+    status_label.configure(text="Monitoring Stopped", text_color="red")
 
 
 # ---------------- MAIN WINDOW ---------------- #
 
 app = ctk.CTk()
-app.geometry("500x350")
-app.title("AI Smart Posture Monitor")
+app.geometry("650x450")
+app.title("AI Posture Guardian")
+app.resizable(False, False)
 
+# Main Card
+main_frame = ctk.CTkFrame(app, corner_radius=0)
+main_frame.pack(fill="both", expand=True)
+
+# Title
 title = ctk.CTkLabel(
-    app,
-    text="AI Smart Posture Monitor",
-    font=("Arial", 24, "bold")
+    main_frame,
+    text="AI POSTURE GUARDIAN",
+    font=("Arial", 32, "bold")
 )
-title.pack(pady=20)
+title.pack(pady=(30, 5))
+
+subtitle = ctk.CTkLabel(
+    main_frame,
+    text="Smart Monitoring • Smart Correction • Smart You",
+    font=("Arial", 14),
+    text_color="gray"
+)
+subtitle.pack(pady=(0, 30))
+
+# Status Card
+status_card = ctk.CTkFrame(main_frame, corner_radius=20)
+status_card.pack(padx=40, fill="x")
 
 status_label = ctk.CTkLabel(
-    app,
-    text="Not Started",
-    font=("Arial", 16),
+    status_card,
+    text="Monitoring Not Started",
+    font=("Arial", 18),
     text_color="red"
 )
-status_label.pack(pady=10)
+status_label.pack(pady=15)
+
+# Timer Card
+timer_card = ctk.CTkFrame(main_frame, corner_radius=20)
+timer_card.pack(padx=40, pady=25, fill="x")
 
 timer_label = ctk.CTkLabel(
-    app,
-    text="Next Check In: --:--",
-    font=("Arial", 18)
+    timer_card,
+    text="00:00",
+    font=("Arial", 48, "bold"),
+    text_color="#00FFAA"
 )
-timer_label.pack(pady=10)
+timer_label.pack(pady=15)
+
+timer_sub = ctk.CTkLabel(
+    timer_card,
+    text="Next Posture Check",
+    font=("Arial", 14),
+    text_color="gray"
+)
+timer_sub.pack(pady=(0, 10))
+
+# Buttons
+button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+button_frame.pack(pady=20)
 
 start_button = ctk.CTkButton(
-    app,
-    text="Start Monitoring",
+    button_frame,
+    text="START MONITORING",
     command=start_monitoring,
-    height=40,
-    width=200
+    height=50,
+    width=200,
+    corner_radius=25,
+    font=("Arial", 16, "bold")
 )
-start_button.pack(pady=20)
+start_button.grid(row=0, column=0, padx=15)
+
+stop_button = ctk.CTkButton(
+    button_frame,
+    text="STOP",
+    command=stop_monitoring,
+    height=50,
+    width=150,
+    corner_radius=25,
+    fg_color="#aa2222",
+    hover_color="#cc3333",
+    font=("Arial", 16, "bold")
+)
+stop_button.grid(row=0, column=1, padx=15)
 
 app.mainloop()
