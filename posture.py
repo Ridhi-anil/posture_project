@@ -54,7 +54,7 @@ while True:
         # -----------------------------
 
         # 1️⃣ Hunched Shoulders (shoulders too close to ears)
-        if ear_shoulder_vertical < h * 0.08:
+        if ear_shoulder_vertical < h * 0.15:
             posture_text = "Hunched Shoulders"
             color = (0, 0, 255)
 
