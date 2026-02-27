@@ -56,8 +56,10 @@ while True:
             color = (0, 0, 255)
 
         # 3️⃣ Slouch (shoulders too low)
+        ear_avg_y = (le_y + re_y) // 2
         shoulder_avg_y = (ls_y + rs_y) // 2
-        if shoulder_avg_y > h * 0.65:
+
+        if ear_avg_y > shoulder_avg_y - 30:
             posture_text = "Slouching"
             color = (0, 0, 255)
 
